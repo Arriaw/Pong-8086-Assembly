@@ -9,20 +9,82 @@
     TOP_MARGIN DW 40
     LEFT_MARGIN DW 20
     BOTTOM_MARGIN DW 20
-    RIGHT_MARGIN DW 60
+    RIGHT_MARGIN DW 60  
+    
+    RACKET_X DW ?
+    RACKET_Y DW ?
+    RACKET_L DW 35
+    RACKET_W DW 6
+    RACKET_COL DB 0FH
 
 .CODE
 MAIN PROC FAR 
     MOV AX, @DATA
     MOV DS, AX
                     
-    CALL SET_GRAPHIC_MODE  
-    CALL DRAW_BORDERS
+    CALL SET_GRAPHIC_MODE
+    CALL DRAW_ENV  
                 
                 
     MOV AH, 4CH
     INT 21H
 MAIN ENDP  
+                
+                
+DRAW_ENV PROC
+    CALL DRAW_BORDERS
+    CALL DRAW_RACKET
+    RET
+
+DRAW_ENV ENDP                
+                
+;---------------
+DRAW_RACKET PROC
+    MOV AX, WINDOW_L
+    SUB AX, RIGHT_MARGIN
+    MOV RACKET_X, AX
+    
+    MOV AX, WINDOW_W
+    SUB AX, BOTTOM_MARGIN
+    SUB AX, TOP_MARGIN
+    MOV DX, 0
+    MOV BX, 2
+    DIV BX
+    
+    MOV BX, AX
+    MOV AX, RACKET_L
+    MOV CX, 2
+    MOV DX, 0
+    DIV CX
+    
+    MOV DX, TOP_MARGIN
+    ADD DX, BX
+    SUB DX, AX
+    MOV RACKET_Y, DX
+    
+    L1:
+    MOV CX, RACKET_X
+    
+        L2:
+        MOV AH, 0CH
+        MOV AL, 0FH
+        INT 10H
+        
+        INC CX
+        MOV AX, RACKET_X
+        ADD AX, RACKET_W 
+        CMP CX, AX
+        JNE L2
+        
+        INC DX
+        MOV AX, RACKET_Y
+        ADD AX, RACKET_L
+        CMP DX, AX
+        JNE L1
+    
+    RET            
+                
+DRAW_RACKET ENDP
 
 ;---------------
 DRAW_BORDERS PROC
