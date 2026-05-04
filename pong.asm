@@ -18,7 +18,16 @@
     RACKET_COL DB 0FH
     RACKET_SPEED DW 5
     
-    KEY DB 0
+    
+    BALL_X DW 0
+    BALL_Y DW 0
+    BALL_SZ DW 4
+    BALL_SX DW -4
+    BALL_SY DW 2
+    BALL_COL DB 0FH
+    
+    KEY DB 0       
+    GAME_OVER DB 0
     
 
 .CODE
@@ -32,7 +41,6 @@ MAIN PROC FAR
                 
   MAIN_LOOP:
     CALL CHECK_KEY_PRESS
-    CALL DELAY          
     
     JMP MAIN_LOOP
   
@@ -42,22 +50,13 @@ MAIN PROC FAR
     INT 21H
 MAIN ENDP  
 
-;---------------------
-DELAY PROC       
-        
-    MOV AH, 86H
-    MOV CX, 0H
-    MOV DX, 0A028H  ;wait for 41 miliseconds (for 24 fps)
-    INT 15H
-    
-    RET
-    
-DELAY ENDP
                 
 ;---------------                
 DRAW_ENV PROC
     CALL DRAW_BORDERS
     CALL DRAW_INITIAL_RACKET
+    CALL INIT_BALL
+    CALL DRAW_BALL
     RET
 
 DRAW_ENV ENDP                
@@ -124,7 +123,62 @@ CHECK_KEY_PRESS PROC
   NO_KEY:           
     RET
     
-CHECK_KEY_PRESS ENDP
+CHECK_KEY_PRESS ENDP   
+
+;---------------
+DRAW_BALL PROC
+    MOV DX, BALL_Y
+    
+  BALL_ROW:
+    MOV CX, BALL_X
+    
+      DBALL_COL:
+        MOV AH, 0CH
+        MOV AL, BALL_COL
+        INT 10H
+        
+        INC CX
+        MOV AX, BALL_X
+        ADD AX, BALL_SZ
+        CMP CX, AX
+        JNE DBALL_COL
+        
+        INC DX
+        MOV AX, BALL_Y
+        ADD AX, BALL_SZ
+        CMP DX, AX
+        JNE BALL_ROW
+        
+     RET
+DRAW_BALL ENDP        
+
+;---------------
+INIT_BALL PROC
+    MOV AX, WINDOW_L
+    SHR AX, 1
+    MOV BX, BALL_SZ
+    SHR BX, 1
+    SUB AX, BX 
+    MOV BX, RIGHT_MARGIN
+    SUB BX, LEFT_MARGIN
+    SHR BX, 1
+    SUB AX, BX
+    MOV BALL_X, AX
+    
+    MOV AX, WINDOW_W
+    SHR AX, 1
+    MOV BX, BALL_SZ
+    SHR BX, 1
+    SUB AX, BX
+    MOV BX, TOP_MARGIN
+    SUB BX, BOTTOM_MARGIN
+    SHR BX, 1            
+    ADD AX, BX
+    MOV BALL_Y, AX
+    
+    RET
+    
+INIT_BALL ENDP
 
 ;---------------      
 CLEAR_RACKET PROC   
