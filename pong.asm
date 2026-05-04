@@ -16,6 +16,10 @@
     RACKET_L DW 35
     RACKET_W DW 6
     RACKET_COL DB 0FH
+    RACKET_SPEED DW 5
+    
+    KEY DB 0
+    
 
 .CODE
 MAIN PROC FAR 
@@ -23,23 +27,165 @@ MAIN PROC FAR
     MOV DS, AX
                     
     CALL SET_GRAPHIC_MODE
-    CALL DRAW_ENV  
+    CALL DRAW_ENV
+    ;CALL DRAW_RACKET  
                 
-                
+  MAIN_LOOP:
+    CALL CHECK_KEY_PRESS
+    CALL DELAY          
+    
+    JMP MAIN_LOOP
+  
+  
+  EXIT:              
     MOV AH, 4CH
     INT 21H
 MAIN ENDP  
+
+;---------------------
+DELAY PROC       
+        
+    MOV AH, 86H
+    MOV CX, 0H
+    MOV DX, 0A028H  ;wait for 41 miliseconds (for 24 fps)
+    INT 15H
+    
+    RET
+    
+DELAY ENDP
                 
-                
+;---------------                
 DRAW_ENV PROC
     CALL DRAW_BORDERS
-    CALL DRAW_RACKET
+    CALL DRAW_INITIAL_RACKET
     RET
 
 DRAW_ENV ENDP                
-                
+     
+;---------------
+CHECK_KEY_PRESS PROC
+    
+    MOV AH, 01H
+    INT 16H
+    JZ NO_KEY
+    
+    MOV AH, 00H
+    INT 16H
+    MOV KEY, AL
+    
+    CMP KEY, 'W'
+    JE UP
+    CMP KEY, 'w'
+    JE UP
+    
+    CMP KEY, 'S'
+    JE DOWN
+    CMP KEY, 's'
+    JE DOWN
+    
+    CMP KEY, 'Q'
+    JE EXIT
+    CMP KEY, 'q'
+    JE EXIT
+    
+    JMP NO_KEY
+    
+  UP:
+    CALL CLEAR_RACKET
+    
+    MOV AX, RACKET_Y
+    SUB AX, RACKET_SPEED
+    CMP AX, TOP_MARGIN
+    JL HIT_TOP
+    MOV RACKET_Y, AX
+    JMP DRAW_NEW
+    
+  
+  DOWN:         
+    CALL CLEAR_RACKET
+    
+    MOV AX, RACKET_Y
+    ADD AX, RACKET_SPEED
+    MOV BX, WINDOW_W
+    SUB BX, BOTTOM_MARGIN
+    SUB BX, RACKET_L
+    CMP AX, BX
+    JG HIT_BOTTOM
+    MOV RACKET_Y, AX
+    JMP DRAW_NEW
+    
+  HIT_TOP:
+  HIT_BOTTOM:
+    JMP DRAW_NEW
+    
+  DRAW_NEW:
+    CALL DRAW_RACKET
+  
+  NO_KEY:           
+    RET
+    
+CHECK_KEY_PRESS ENDP
+
+;---------------      
+CLEAR_RACKET PROC   
+    
+    MOV DX, RACKET_Y
+    
+  CRL1:
+    MOV CX, RACKET_X 
+    
+    CRL2:
+      MOV AH, 0Ch
+      MOV AL, 00h
+      INT 10h
+
+      INC CX
+      MOV AX, RACKET_X
+      ADD AX, RACKET_W
+      CMP CX, AX
+      JNE CRL2
+
+      INC DX
+      MOV AX, RACKET_Y
+      ADD AX, RACKET_L
+      CMP DX, AX
+      JNE CRL1
+
+    ret 
+    
+CLEAR_RACKET ENDP 
+
 ;---------------
 DRAW_RACKET PROC
+   
+    MOV DX, RACKET_Y 
+    
+    DRL1:
+    MOV CX, RACKET_X
+    
+        DRL2:
+        MOV AH, 0CH
+        MOV AL, 0FH
+        INT 10H
+        
+        INC CX
+        MOV AX, RACKET_X
+        ADD AX, RACKET_W 
+        CMP CX, AX
+        JNE DRL2
+        
+        INC DX
+        MOV AX, RACKET_Y
+        ADD AX, RACKET_L
+        CMP DX, AX
+        JNE DRL1
+    
+    RET            
+                
+DRAW_RACKET ENDP
+          
+;---------------
+DRAW_INITIAL_RACKET PROC
     MOV AX, WINDOW_L
     SUB AX, RIGHT_MARGIN
     MOV RACKET_X, AX
@@ -62,10 +208,10 @@ DRAW_RACKET PROC
     SUB DX, AX
     MOV RACKET_Y, DX
     
-    L1:
+    DIRL1:
     MOV CX, RACKET_X
     
-        L2:
+        DIRL2:
         MOV AH, 0CH
         MOV AL, 0FH
         INT 10H
@@ -74,17 +220,17 @@ DRAW_RACKET PROC
         MOV AX, RACKET_X
         ADD AX, RACKET_W 
         CMP CX, AX
-        JNE L2
+        JNE DIRL2
         
         INC DX
         MOV AX, RACKET_Y
         ADD AX, RACKET_L
         CMP DX, AX
-        JNE L1
+        JNE DIRL1
     
     RET            
                 
-DRAW_RACKET ENDP
+DRAW_INITIAL_RACKET ENDP
 
 ;---------------
 DRAW_BORDERS PROC
@@ -139,8 +285,8 @@ DRAW_BOTTOM_BORDER PROC
     SUB DX, BOTTOM_MARGIN
     MOV CX, LEFT_MARGIN
 BOTTOM_LOOP:
-    MOV AH, 0CH ; set pixel
-    MOV AL, 0FH ; white
+    MOV AH, 0CH
+    MOV AL, 0FH
     INT 10H
     
     INC CX
