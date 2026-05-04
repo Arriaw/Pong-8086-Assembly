@@ -82,43 +82,43 @@ WRITE_SCORE_ON_SCREEN PROC
     MOV AX, SCORE
     MOV DI, 0
     MOV DX, 0
-    print_label1:
+    WL1:
     
-        cmp ax, 0
-        je print_label2
+        CMP AX, 0
+        JE WL2
         
-        mov bx, 10
-        div bx
-        push dx
-        inc di
+        MOV BX, 10
+        DIV BX
+        PUSH DX
+        INC DI
         
-        xor dx, dx
-        jmp print_label1
+        XOR DX, DX
+        JMP WL1
         
-    print_label2:
+    WL2:
     
-        cmp di, 0
-        je print_exit
+        CMP DI, 0
+        JE PRINT_END
         
-        pop dx 
-        mov ax, dx
-        add ax, 48
-        mov bh, 0
-        mov bl, 046h
-        mov cx, 1
-        mov ah, 09h
-        int 10h     ;write it
+        POP DX 
+        MOV AX, DX
+        ADD AX, 48
+        MOV BH, 0
+        MOV BL, 046H
+        MOV CX, 1
+        MOV AH, 09H
+        INT 10H
         
-        mov dh, 1
-        mov dl, 60
-        mov bh, 0
-        mov ah, 2
-        int 10h     ;move cursor forward (DIRTY CODE ALERT)
+        MOV DH, 1
+        MOV DL, 60
+        MOV BH, 0
+        MOV AH, 2
+        INT 10H
         
-        dec di
-        jmp print_label2
+        DEC DI
+        JMP WL2
         
-    print_exit:
+    PRINT_END:
         RET                  
     
 WRITE_SCORE_ON_SCREEN ENDP         
@@ -210,7 +210,16 @@ DELAY PROC
     
     RET
     
-DELAY ENDP
+DELAY ENDP   
+         
+;---------------
+GET_RANDOM_COLOR PROC
+    MOV AH, 00h
+    INT 1Ah           ; CX:DX = timer ticks
+    MOV AL, DL        ; take lower byte = random-ish
+    AND AL, 3Fh       ; limit colors (0-63)
+    MOV BALL_COL, AL
+GET_RANDOM_COLOR ENDP
 
 ;---------------
 UPDATE_BALL PROC
@@ -311,7 +320,7 @@ UPDATE_BALL PROC
     MOV BALL_SX, AX
     
     INC SCORE
-    ;CALL GET_RANDOM_COLOR
+    CALL GET_RANDOM_COLOR
     
     JMP UPDATE_DRAW
     
