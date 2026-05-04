@@ -16,14 +16,14 @@
     RACKET_L DW 35
     RACKET_W DW 6
     RACKET_COL DB 0FH
-    RACKET_SPEED DW 5
+    RACKET_SPEED DW 6
     
     
     BALL_X DW 0
     BALL_Y DW 0
     BALL_SZ DW 4
     BALL_SX DW -4
-    BALL_SY DW 2
+    BALL_SY DW -3
     BALL_COL DB 0FH
     
     KEY DB 0       
@@ -36,12 +36,17 @@ MAIN PROC FAR
     MOV DS, AX
                     
     CALL SET_GRAPHIC_MODE
-    CALL DRAW_ENV
-    ;CALL DRAW_RACKET  
+    CALL DRAW_ENV    
                 
   MAIN_LOOP:
-    CALL CHECK_KEY_PRESS
     
+    CMP GAME_OVER, 1
+    JE EXIT
+  
+    CALL CHECK_KEY_PRESS
+    CALL UPDATE_BALL 
+    CALL DELAY           
+               
     JMP MAIN_LOOP
   
   
@@ -123,7 +128,156 @@ CHECK_KEY_PRESS PROC
   NO_KEY:           
     RET
     
-CHECK_KEY_PRESS ENDP   
+CHECK_KEY_PRESS ENDP  
+
+;---------------
+DELAY PROC       
+        
+    MOV AH, 86H
+    MOV CX, 0H
+    MOV DX, 0a028H  ; delay for 41 ms (for 24 fps)
+    INT 15H
+    
+    RET
+    
+DELAY ENDP
+
+;---------------
+UPDATE_BALL PROC
+    CALL CLEAR_BALL
+    
+    MOV AX, BALL_X
+    ADD AX, BALL_SX
+    MOV BALL_X, AX
+    
+    MOV AX, BALL_Y
+    ADD AX, BALL_SY
+    MOV BALL_Y, AX
+    
+    ; COLLISIONS : 
+    ; if ball_y <= top_margin + 1
+    
+    MOV AX, TOP_MARGIN
+    INC AX
+    CMP BALL_Y, AX
+    JG CHECK_BOTTOM
+    
+    MOV AX, TOP_MARGIN
+    INC AX
+    MOV BALL_Y, AX
+    
+    MOV AX, BALL_SY
+    NEG AX
+    MOV BALL_SY, AX
+    
+  CHECK_BOTTOM:
+    ; if ball_y + ball_sz >= window_w - bottom_margin
+    MOV AX, BALL_Y
+    ADD AX, BALL_SZ
+    
+    MOV BX, WINDOW_W
+    SUB BX, BOTTOM_MARGIN
+    
+    CMP AX, BX
+    JL CHECK_LEFT
+    
+    MOV AX, WINDOW_W
+    SUB AX, BOTTOM_MARGIN
+    SUB AX, BALL_SZ
+    MOV BALL_Y, AX
+    
+    MOV AX, BALL_SY
+    NEG AX
+    MOV BALL_SY, AX
+    
+  CHECK_LEFT:
+    ; if ball_x <= left_margin + 1
+    MOV AX, LEFT_MARGIN
+    INC AX
+    CMP BALL_X, AX
+    JG CHECK_RACKET
+    
+    MOV AX, LEFT_MARGIN
+    INC AX
+    MOV BALL_X, AX
+    
+    MOV AX, BALL_SX
+    NEG AX
+    MOV BALL_SX, AX
+    
+  CHECK_RACKET:  
+                         
+    ; if ball_x + ball_sz >= window_l - right_margin - racket_w
+    ; if ball_y + ball_sz > racket_y and ball_y < racket_y + racket_l  --> ok                     
+                         
+    MOV AX, BALL_X
+    ADD AX, BALL_SZ
+    MOV BX, WINDOW_L
+    SUB BX, RIGHT_MARGIN
+    SUB BX, RACKET_W
+    CMP AX, BX
+    JL UPDATE_DRAW  
+    
+    MOV AX, BALL_Y
+    ADD AX, BALL_SZ     
+    MOV BX, RACKET_Y
+    CMP AX, BX
+    JL OVER
+    
+    MOV AX, BALL_Y
+    MOV BX, RACKET_Y
+    ADD BX, RACKET_L
+    CMP AX, BX
+    JG OVER   
+    
+    MOV AX, WINDOW_L
+    SUB AX, RIGHT_MARGIN
+    SUB AX, RACKET_W
+    SUB AX, BALL_SZ
+    MOV BALL_X, AX
+    
+    MOV AX, BALL_SX
+    NEG AX
+    MOV BALL_SX, AX
+    
+    JMP UPDATE_DRAW
+    
+  OVER:
+    MOV GAME_OVER, 1
+   
+  UPDATE_DRAW:
+    CALL DRAW_BALL  
+    
+    RET
+UPDATE_BALL ENDP
+      
+;---------------
+CLEAR_BALL PROC
+    MOV DX, BALL_Y
+
+  CBALL_ROW:
+    MOV CX, BALL_X
+
+      CBALL_COL:
+        MOV AH, 0Ch
+        MOV AL, 00h
+        MOV BH,0
+        INT 10h
+
+        INC CX
+        MOV AX, BALL_X
+        ADD AX, BALL_SZ
+        CMP CX, AX
+        JL CBALL_COL
+
+        INC DX
+        MOV AX, BALL_Y
+        ADD AX, BALL_SZ
+        CMP DX, AX
+        JL CBALL_ROW
+
+    RET
+CLEAR_BALL ENDP
 
 ;---------------
 DRAW_BALL PROC
@@ -135,19 +289,20 @@ DRAW_BALL PROC
       DBALL_COL:
         MOV AH, 0CH
         MOV AL, BALL_COL
+        MOV BH,0
         INT 10H
         
         INC CX
         MOV AX, BALL_X
         ADD AX, BALL_SZ
         CMP CX, AX
-        JNE DBALL_COL
+        JL DBALL_COL
         
         INC DX
         MOV AX, BALL_Y
         ADD AX, BALL_SZ
         CMP DX, AX
-        JNE BALL_ROW
+        JL BALL_ROW
         
      RET
 DRAW_BALL ENDP        
@@ -191,6 +346,7 @@ CLEAR_RACKET PROC
     CRL2:
       MOV AH, 0Ch
       MOV AL, 00h
+      MOV BH,0
       INT 10h
 
       INC CX
@@ -220,6 +376,7 @@ DRAW_RACKET PROC
         DRL2:
         MOV AH, 0CH
         MOV AL, 0FH
+        MOV BH,0
         INT 10H
         
         INC CX
@@ -268,6 +425,7 @@ DRAW_INITIAL_RACKET PROC
         DIRL2:
         MOV AH, 0CH
         MOV AL, 0FH
+        MOV BH,0
         INT 10H
         
         INC CX
@@ -304,6 +462,7 @@ DRAW_TOP_BORDER PROC
 TOP_LOOP:
     MOV AH, 0CH ; set pixel
     MOV AL, 0FH ; white
+    MOV BH,0
     INT 10H
     
     INC CX
@@ -322,6 +481,7 @@ DRAW_LEFT_BORDER PROC
 LEFT_LOOP:
     MOV AH, 0CH
     MOV AL, 0FH
+    MOV BH,0
     INT 10H
     
     INC DX
@@ -341,6 +501,7 @@ DRAW_BOTTOM_BORDER PROC
 BOTTOM_LOOP:
     MOV AH, 0CH
     MOV AL, 0FH
+    MOV BH,0
     INT 10H
     
     INC CX
@@ -357,7 +518,8 @@ SET_GRAPHIC_MODE PROC
     
     MOV AH, 00H     
     MOV AL, 13H  ; 320x200 256
-    INT 10H
+    MOV BH,0
+    INT 10H             
     
     RET
     
