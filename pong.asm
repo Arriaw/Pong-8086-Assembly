@@ -28,6 +28,9 @@
     
     KEY DB 0       
     GAME_OVER DB 0
+    SCORE DW 0          
+    WIN_SCORE DW 30
+    WIN DB 0
     
 
 .CODE
@@ -45,7 +48,8 @@ MAIN PROC FAR
   
     CALL CHECK_KEY_PRESS
     CALL UPDATE_BALL 
-    CALL DELAY           
+    CALL DELAY         
+    CALL WRITE_SCORE_ON_SCREEN  
                
     JMP MAIN_LOOP
   
@@ -64,7 +68,73 @@ DRAW_ENV PROC
     CALL DRAW_BALL
     RET
 
-DRAW_ENV ENDP                
+DRAW_ENV ENDP  
+
+;---------------             
+WRITE_SCORE_ON_SCREEN PROC    
+                      
+    MOV DH, 1
+    MOV DL, 59
+    MOV BH, 0
+    MOV AH, 2
+    INT 10H
+    
+    MOV AX, SCORE
+    MOV DI, 0
+    MOV DX, 0
+    print_label1:
+    
+        cmp ax, 0
+        je print_label2
+        
+        mov bx, 10
+        div bx
+        push dx
+        inc di
+        
+        xor dx, dx
+        jmp print_label1
+        
+    print_label2:
+    
+        cmp di, 0
+        je print_exit
+        
+        pop dx 
+        mov ax, dx
+        add ax, 48
+        mov bh, 0
+        mov bl, 046h
+        mov cx, 1
+        mov ah, 09h
+        int 10h     ;write it
+        
+        mov dh, 1
+        mov dl, 60
+        mov bh, 0
+        mov ah, 2
+        int 10h     ;move cursor forward (DIRTY CODE ALERT)
+        
+        dec di
+        jmp print_label2
+        
+    print_exit:
+        RET                  
+    
+WRITE_SCORE_ON_SCREEN ENDP         
+             
+;---------------
+CHECK_WIN PROC 
+    MOV AX, WIN_SCORE 
+    CMP SCORE, AX
+    JL CONTINUE
+    
+    MOV WIN, 1
+    
+    CONTINUE:
+      RET
+    
+CHECK_WIN ENDP
      
 ;---------------
 CHECK_KEY_PRESS PROC
@@ -239,6 +309,9 @@ UPDATE_BALL PROC
     MOV AX, BALL_SX
     NEG AX
     MOV BALL_SX, AX
+    
+    INC SCORE
+    ;CALL GET_RANDOM_COLOR
     
     JMP UPDATE_DRAW
     
