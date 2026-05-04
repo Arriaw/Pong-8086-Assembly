@@ -30,7 +30,9 @@
     GAME_OVER DB 0
     SCORE DW 0          
     WIN_SCORE DW 30
-    WIN DB 0
+    WIN DB 0   
+    
+    GAME_OVER_MSG DB 'GAME OVER!',0
     
 
 .CODE
@@ -44,14 +46,18 @@ MAIN PROC FAR
   MAIN_LOOP:
     
     CMP GAME_OVER, 1
-    JE EXIT
+    JE GAME_OVER_STATE
   
     CALL CHECK_KEY_PRESS
     CALL UPDATE_BALL 
     CALL DELAY         
     CALL WRITE_SCORE_ON_SCREEN  
                
-    JMP MAIN_LOOP
+    JMP MAIN_LOOP     
+    
+  GAME_OVER_STATE:
+    CALL SHOW_GAME_OVER_SCREEN
+    JMP EXIT
   
   
   EXIT:              
@@ -620,5 +626,38 @@ CLEAR_SCREEN PROC
                        
 CLEAR_SCREEN ENDP
 ;---------------
+                     
+SHOW_GAME_OVER_SCREEN PROC
 
+    CALL CLEAR_SCREEN
+
+    ; move cursor to center
+    MOV AH, 02H
+    MOV BH, 0
+    MOV DH, 10       ; row
+    MOV DL, 12       ; column
+    INT 10H
+
+    LEA SI, GAME_OVER_MSG
+
+PRINT_GO_CHAR:
+    LODSB
+    OR AL, AL
+    JZ DONE_GO
+    MOV AH, 0Eh
+    MOV BH, 0
+    MOV BL, 0Fh    
+    INT 10h
+    JMP PRINT_GO_CHAR
+
+DONE_GO:
+
+    ; wait for any key
+    MOV AH, 00h
+    INT 16h
+
+    RET
+SHOW_GAME_OVER_SCREEN ENDP
+                     
+                     
 END MAIN
