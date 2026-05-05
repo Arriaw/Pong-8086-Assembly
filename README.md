@@ -2,6 +2,8 @@
 
 A classic, single-player Pong game written in **8086 Assembly Language** using **VGA Mode 13h** (`320x200` graphics). This project demonstrates low-level graphics, BIOS interrupts, keyboard input, collision detection, score handling, and game loop logic in a DOS environment.
 
+![Pong Environment](screenshot.png)
+
 ##  Features
 
 - **320x200 pixel graphics**
