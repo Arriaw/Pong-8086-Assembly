@@ -32,9 +32,9 @@ pong.com
 ```
 
 ## Controls
-W or w: Move Racket Up
-S or s: Move Racket Down
-Q or q: Exit Game
+W or w: Move Racket Up  
+S or s: Move Racket Down  
+Q or q: Exit Game  
 
 ## Next Improvements
 
